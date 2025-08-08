@@ -1,8 +1,13 @@
 import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
+import torchvision
 from torchvision import transforms
 import torch
+
 
 class CUB2011Dataset(Dataset):
     def __init__(self, root_dir, train=True, image_size=224):
@@ -46,6 +51,25 @@ class CUB2011Dataset(Dataset):
         image = Image.open(img_path).convert('RGB')
         image = self.transform(image)
         return image, label
+
+def show_image(img_tensor, title=None):
+    # Unnormalize the image (reverse ImageNet normalization)
+    mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+    img = img_tensor * std + mean  # unnormalize
+
+    # Convert to numpy and transpose to HWC
+    np_img = img.numpy().transpose(1, 2, 0)
+
+    # Clip values to [0, 1] in case of minor float errors
+    np_img = np.clip(np_img, 0, 1)
+
+    # Show image
+    plt.imshow(np_img)
+    if title is not None:
+        plt.title(title)
+    plt.axis('off')
+    plt.show()
 
 # Example usage:
 if __name__ == "__main__":
