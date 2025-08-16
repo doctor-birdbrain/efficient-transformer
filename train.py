@@ -10,6 +10,7 @@ def train_and_log(
     model,
     train_dataset,
     val_dataset=None,
+    data_transform=None,
     num_steps=100,
     val_interval=10,
     batch_size=32,
@@ -57,6 +58,8 @@ def train_and_log(
         except StopIteration:
             data_iter = iter(dataloader)
             inputs, targets = next(data_iter)
+        if data_transform:
+            inputs = data_transform(inputs)
 
         inputs, targets = inputs.to(device), targets.to(device)
 
@@ -84,6 +87,8 @@ def train_and_log(
             total = 0
             with torch.no_grad():
                 for val_inputs, val_targets in val_loader:
+                    if data_transform:
+                        val_inputs = data_transform(val_inputs)
                     val_inputs, val_targets = val_inputs.to(device), val_targets.to(device)
                     val_outputs = model(val_inputs)
                     v_loss = criterion(val_outputs, val_targets)
