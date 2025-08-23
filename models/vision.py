@@ -1,5 +1,17 @@
 import torch.nn.functional as F
 
+def attach_aux_heads(model, exit_layers, num_classes, drop_rate=0.0):
+    model.aux_layers = exit_layers
+    model.aux_heads = nn.ModuleDict()
+
+    for layer in exit_layers:
+        model.aux_heads[str(layer)] = nn.Sequential(
+            nn.LayerNorm(model.embed_dim),
+            nn.Dropout(drop_rate),
+            nn.Linear(model.embed_dim, num_classes)
+        )
+    return model
+
 @torch.no_grad()
 def predict_with_early_exit(model,
                             x,
