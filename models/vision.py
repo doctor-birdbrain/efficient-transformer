@@ -1,3 +1,4 @@
+import collections
 import torch.nn.functional as F
 
 
@@ -44,12 +45,11 @@ class ViTWithAuxHeads(nn.Module):
 
         return logits_dict
 
-    def compute_loss(self, inputs, targets, aux_weight=0.5):
+    def compute_loss(self, logits_dict, targets, aux_weight=0.5):
         """
-        Computes loss for a batch (inputs, targets).
+        Computes loss.
         """
 
-        logits_dict = self.forward(x)
         aux_loss = 0.0
         for k, logits in logits_dict.items():
             if k == "final":
@@ -110,3 +110,38 @@ class ViTWithAuxHeads(nn.Module):
         confidence, prediction = probs.max(dim=-1)
 
         return prediction.item(), "final", confidence.item()
+
+    def accuracy(self, logits, targets):
+        preds = logits.argmax(dim=-1)
+        return (preds == targets).float().mean().item()
+
+    def train_one_epoch(
+        self,
+        train_dataloader,
+        optimizer,
+        aux_weight,
+        device="cpu",
+    ):
+        self.train()
+        total_loss = 0.0
+        total_metrics = collections.defaultdict(list)
+
+        batch_count = 0
+        for images, labels in train_dataloader:
+            batch_count += 1
+            logits_dict = self.forward(images)
+            loss = compute_loss(logits_dict, labels, aux_weight=aux_weight)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+            # Track per-head accuracy
+            with torch.no_grad():
+                for head_name, logits in logits_dict.items():
+                    acc = self.accuracy(logits, labels)
+                    total_metrics[head].append(acc)
+
+        avg_loss = total_loss / batch_count
+        avg_metrics = {k: sum(v) / len(v) for k, v in total_metrics.items()}
+        return avg_losses, avg_metrics
