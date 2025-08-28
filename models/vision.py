@@ -22,7 +22,7 @@ class ViTWithAuxHeads(nn.Module):
                 nn.Linear(self.embed_dim, num_classes),
             )
 
-    def forward(self, x):
+    def forward_with_aux(self, x):
         """
         We follow the form of the forward function of timm's ViT,
         specifically the "forward_features" function.
@@ -68,29 +68,38 @@ class ViTWithAuxHeads(nn.Module):
         return loss
 
     @torch.no_grad()
-    def predict_with_early_exit(x, threshold=0.9):
+    def predict_with_early_exit(x, threshold=0.9, exit_logging=True):
         """
         Takes a timm ViT model and rRuns inference with early exits.
-        - exit layers: list of layer indices where aux heads are attached.
-        - threshold: confidence threshold for early exit
-
-        Returns:
-        - predicted class
-        - exit layer, or "final"
-        - confidence score
 
         We follow the form of the forward function of timm's ViT,
         specifically the "forward_features" function.
         https://github.com/huggingface/pytorch-image-models/blob/954613a470652e4a113ff45b62dbd15c4e229218/timm/models/vision_transformer.py#L934C9-L934C25
         """
+
+        # Outputs to fill (maintain original batch order)
+        preds = torch.empty(x.shape[0], dtype=torch.long, device=x.device)
+        confs = torch.empty(x.shape[0], dtype=x.dtype, device=x.device)
+        if exit_logging:
+            exit_at = [None] * x.shape[0]
+        else:
+            exit_at = None
+
+        # Common initial part, runs on full batch
         x = self.vit.patch_embed(x)
         x = self.vit._pos_embed(x)
         x = self.vit.patch_drop(x)
         x = self.vit.norm_pre(x)
 
+        # Keep track of inputs still active
+        active_idx = torch.arange(x.shape[0], device=x.device)
+
         # We skip the case of attention masking, not needed for
         # currently planned experiments.
         for i, block in enumerate(self.vit.blocks, start=1):
+            if active_idx.numel() == 0:
+                break  # all batch items have exited
+
             x = block(x)
 
             if i in exit_layers:
@@ -99,28 +108,91 @@ class ViTWithAuxHeads(nn.Module):
                 cls_rep = x[:, 0]  # the quirky CLS token
                 logits = self.vit.aux_heads[str(i)](cls_rep)
                 probs = F.softmax(logits, dim=-1)
-                confidence, prediction = probs.max(dim=-1)
+                conf, pred = probs.max(dim=-1)
 
-                if confidence.item() >= threshold:
-                    return prediction.item(), i, confidence.item()
+                # Decide which elements exit
+                exit_mask = conf >= threshold
+                if exit_mask.any():
+                    exited_orig_idx = active_idx[exit_mask]
+                    preds[exited_orig_idx] = pred[exit_mask]
+                    confs[exited_orig_idx] = conf[exit_mask]
+                    if exit_logging:
+                        for j in exited_orig_idx.tolist():
+                            exit_at[j] = i
+
+                    # Keep only the not-exited samples for deeper blocks
+                    keep_mask = ~exit_mask
+                    # Shrink batch:
+                    x = x[keep_mask]
+                    # Shrink index mapping:
+                    active_idx = active_idx[keep_mask]
 
         # If we didn't exit early...
-        logits = self.vit.forward_head(x)
-        probs = F.softmax(logits, dim=-1)
-        confidence, prediction = probs.max(dim=-1)
+        if active_idx.numel() > 0:
+            logits = self.vit.forward_head(x)
+            probs = F.softmax(logits, dim=-1)
+            conf, pred = probs.max(dim=-1)
 
-        return prediction.item(), "final", confidence.item()
+            preds[active_idx] = pred
+            confs[active_idx] = conf
+            if exit_logging:
+                for j in active_idx.tolist():
+                    exit_at[j] = "final"
+
+        return preds, exit_at, confs
 
     def accuracy(self, logits, targets):
         preds = logits.argmax(dim=-1)
         return (preds == targets).float().mean().item()
+
+    def evaluate(self, val_dataloader, aux_weight=0.5, device="cuda"):
+        self.eval()
+        total_loss = 0.0
+        total_metrics = collections.defaultdict(list)
+
+        batch_count = 0
+        with torch.no_grad():
+            for images, labels in val_dataloader:
+                batch_count += 1
+                images, labels = images.to(device), labels.to(device)
+
+                logits_dict = self.forward_with_aux(images)
+                loss = self.compute_loss(
+                    logits_dict, labels, aux_weight=aux_weight
+                )
+                total_loss += loss.item()
+
+                for head_name, logits in logits_dict.items():
+                    acc = accuracy(logits, labels)
+                    total_metrics[head_name].append(acc)
+
+        avg_loss = total_loss / batch_count
+        avg_metrics = {k: sum(v) / len(v) for k, v in total_metrics.items()}
+        return avg_loss, avg_metrics
+
+    def evaluate_early_exit(
+        self, val_dataloader, threshold=0.9, device="cuda"
+    ):
+        """
+        Evaluation assuming the model can do early exits at eval time.
+        """
+        self.eval()
+        correct, total = 0, 0
+        exit_layers = []
+
+        with torch.no_grad():
+            for images, labels in dataloader:
+                images, labels = images.to(device), labels.to(device)
+
+                # Predict with early exit
+                raise Exception("TODO!")
 
     def train_one_epoch(
         self,
         train_dataloader,
         optimizer,
         aux_weight,
-        device="cpu",
+        device="cuda",
     ):
         self.train()
         total_loss = 0.0
@@ -128,19 +200,23 @@ class ViTWithAuxHeads(nn.Module):
 
         batch_count = 0
         for images, labels in train_dataloader:
-            batch_count += 1
-            logits_dict = self.forward(images)
-            loss = compute_loss(logits_dict, labels, aux_weight=aux_weight)
+            images, labels = images.to(device), labels.to(device)
+            logits_dict = self.forward_with_aux(images)
+            loss = self.compute_loss(
+                logits_dict, labels, aux_weight=aux_weight
+            )
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
+            batch_count += 1
 
             # Track per-head accuracy
             with torch.no_grad():
                 for head_name, logits in logits_dict.items():
                     acc = self.accuracy(logits, labels)
-                    total_metrics[head].append(acc)
+                    total_metrics[head_name].append(acc)
 
         avg_loss = total_loss / batch_count
         avg_metrics = {k: sum(v) / len(v) for k, v in total_metrics.items()}
