@@ -70,7 +70,7 @@ class ViTWithAuxHeads(nn.Module):
     @torch.no_grad()
     def predict_with_early_exit(x, threshold=0.9, exit_logging=True):
         """
-        Takes a timm ViT model and rRuns inference with early exits.
+        Takes a timm ViT model and runs inference with early exits.
 
         We follow the form of the forward function of timm's ViT,
         specifically the "forward_features" function.
@@ -171,21 +171,65 @@ class ViTWithAuxHeads(nn.Module):
         return avg_loss, avg_metrics
 
     def evaluate_early_exit(
-        self, val_dataloader, threshold=0.9, device="cuda"
+        self,
+        val_dataloader,
+        threshold=0.9,
+        device="cuda",
+        log_to_wandb=False,
+        epoch=None,
     ):
         """
         Evaluation assuming the model can do early exits at eval time.
         """
         self.eval()
         correct, total = 0, 0
-        exit_layers = []
+
+        # track stats per exit
+        exit_correct, exit_total = {}, {}
 
         with torch.no_grad():
             for images, labels in dataloader:
                 images, labels = images.to(device), labels.to(device)
 
                 # Predict with early exit
-                raise Exception("TODO!")
+                preds, exit_at, _ = self.predict_with_early_exit(
+                    images, threshold=threshold
+                )
+
+                total += targets.size(0)
+                correct += (preds == targets).sum().item()
+
+                # per-exit stats
+                for i, ex in enumerate(exit_at):
+                    exit_total[ex] = exit_total.get(ex, 0) + 1
+                    exit_correct[ex] = (
+                        exit_correct.get(ex, 0)
+                        + (preds[i] == targets[i]).item()
+                    )
+
+        # aggregate results
+        overall_acc = correct / total
+        per_exit_acc = {
+            ex: exit_correct[ex] / exit_total[ex] for ex in exit_total
+        }
+
+        print(f"[Validation] Overall Acc: {overall_acc:.4f}")
+        for ex, acc in per_exit_acc.items():
+            print(f"  Exit {ex}: {acc:.4f} (n={exit_total[ex]})")
+
+        # log to wandb if requested
+        if log_to_wandb:
+            log_dict = {
+                f"val/exit_{ex}_acc": acc for ex, acc in per_exit_acc.items()
+            }
+            log_dict["val/overall_acc"] = overall_acc
+            log_dict["epoch"] = epoch
+
+            import wandb
+
+            wandb.log(log_dict)
+
+        return overall_acc, per_exit_acc
 
     def train_one_epoch(
         self,
