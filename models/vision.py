@@ -10,7 +10,7 @@ class ViTWithAuxHeads(nn.Module):
     ):
         super().__init__()
         self.vit = timm.create_model(model_name, pretrained=pretrained)
-        self.embed_dim = base_model.embed_dim
+        self.embed_dim = self.vit.embed_dim
 
         # TODO: swap out other parts?
         self.vit.head = nn.Linear(self.embed_dim, num_classes)
@@ -20,7 +20,7 @@ class ViTWithAuxHeads(nn.Module):
         for layer in self.aux_layers:
             vit.aux_heads[str(layer)] = nn.Sequential(
                 nn.LayerNorm(self.embed_dim),
-                nn.Dropout(drop_rate),
+                nn.Dropout(self.vit.head_drop.p),
                 nn.Linear(self.embed_dim, num_classes),
             )
 
