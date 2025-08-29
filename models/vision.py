@@ -8,7 +8,7 @@ class ViTWithAuxHeads(nn.Module):
     def __init__(
         self, model_name, num_classes, aux_layers=[3, 6, 9], pretrained=True
     ):
-        super.__init__()
+        super().__init__()
         self.vit = timm.create_model(model_name, pretrained=pretrained)
         self.embed_dim = base_model.embed_dim
 
