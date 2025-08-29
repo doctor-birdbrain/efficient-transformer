@@ -20,7 +20,7 @@ class ViTWithAuxHeads(nn.Module):
         self.aux_heads = nn.ModuleDict()
 
         for layer in self.aux_layers:
-            vit.aux_heads[str(layer)] = nn.Sequential(
+            self.vit.aux_heads[str(layer)] = nn.Sequential(
                 nn.LayerNorm(self.embed_dim),
                 nn.Dropout(self.vit.head_drop.p),
                 nn.Linear(self.embed_dim, num_classes),
