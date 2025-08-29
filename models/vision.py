@@ -20,7 +20,7 @@ class ViTWithAuxHeads(nn.Module):
         self.aux_heads = nn.ModuleDict()
 
         for layer in self.aux_layers:
-            self.vit.aux_heads[str(layer)] = nn.Sequential(
+            self.aux_heads[str(layer)] = nn.Sequential(
                 nn.LayerNorm(self.embed_dim),
                 nn.Dropout(self.vit.head_drop.p),
                 nn.Linear(self.embed_dim, num_classes),
@@ -110,7 +110,7 @@ class ViTWithAuxHeads(nn.Module):
                 # It seems we need to do this because it's the only
                 # available representation at intermediate depths
                 cls_rep = x[:, 0]  # the quirky CLS token
-                logits = self.vit.aux_heads[str(i)](cls_rep)
+                logits = self.aux_heads[str(i)](cls_rep)
                 probs = F.softmax(logits, dim=-1)
                 conf, pred = probs.max(dim=-1)
 
