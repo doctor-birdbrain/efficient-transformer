@@ -19,7 +19,9 @@ def train_loop_v0(
     # This is a decent idea if we are finetuning the entire transformer:
     lr = 1e-4
     weight_decay = 0.05
-    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=lr, weight_decay=weight_decay
+    )
     # If we only train some head, better to use lr=1e-3, no decay, and just Adam
 
     wandb.init(
