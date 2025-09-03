@@ -63,8 +63,8 @@ class ViTWithAuxHeads(nn.Module):
 
         if len(self.aux_layers) > 0:
             loss = (
-                self.aux_weight * (aux_loss / len(self.aux_layers))
-                + (1 - self.aux_weight) * main_loss
+                aux_weight * (aux_loss / len(self.aux_layers))
+                + (1 - aux_weight) * main_loss
             )
         else:
             loss = main_loss

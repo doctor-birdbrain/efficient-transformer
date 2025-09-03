@@ -40,9 +40,6 @@ def train_loop_v0(
             train_loader, optimizer, aux_weight, device
         )
 
-        train_loss, train_metrics = model.train_one_epoch(
-            train_loader, optimizer, aux_weight, device
-        )
         val_loss, val_metrics = model.evaluate(val_loader, aux_weight, device)
 
         # Log to console
