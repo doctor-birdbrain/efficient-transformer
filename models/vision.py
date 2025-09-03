@@ -156,9 +156,9 @@ class ViTWithAuxHeads(nn.Module):
 
         batch_count = 0
         with torch.no_grad():
-            for images, labels in val_dataloader:
+            for batch in val_dataloader:
                 batch_count += 1
-                images, labels = images.to(device), labels.to(device)
+                images, labels = batch['image'].to(device), batch['label'].to(device)
 
                 logits_dict = self.forward_with_aux(images)
                 loss = self.compute_loss(
@@ -192,8 +192,8 @@ class ViTWithAuxHeads(nn.Module):
         exit_correct, exit_total = {}, {}
 
         with torch.no_grad():
-            for images, labels in dataloader:
-                images, labels = images.to(device), labels.to(device)
+            for batch in dataloader:
+                images, labels = batch['image'].to(device), batch['label'].to(device)
 
                 # Predict with early exit
                 preds, exit_at, _ = self.predict_with_early_exit(
@@ -247,8 +247,8 @@ class ViTWithAuxHeads(nn.Module):
         total_metrics = collections.defaultdict(list)
 
         batch_count = 0
-        for images, labels in train_dataloader:
-            images, labels = images.to(device), labels.to(device)
+        for batch in train_dataloader:
+            images, labels = batch['image'].to(device), batch['label'].to(device)
             logits_dict = self.forward_with_aux(images)
             loss = self.compute_loss(
                 logits_dict, labels, aux_weight=aux_weight
