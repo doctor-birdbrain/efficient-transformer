@@ -13,8 +13,10 @@ def train_loop_v0(
     val_loader,
     num_epochs=10,
     aux_weight=0.5,
-    device="cuda",
+    checkpoint_epochs=[],
     project_name="vit-tiny-early-exit",
+    device="cuda",
+    
 ):
     # This is a decent idea if we are finetuning the entire transformer:
     lr = 1e-4
@@ -35,7 +37,7 @@ def train_loop_v0(
         },
     )
 
-    for epoch in range(num_epochs):
+    for epoch in range(start=1, stop=num_epochs, step=1):
         train_loss, train_metrics = model.train_one_epoch(
             train_loader, optimizer, aux_weight, device
         )
@@ -60,6 +62,15 @@ def train_loop_v0(
             log_dict[f"val/{head}_acc"] = acc
 
         wandb.log(log_dict)
+
+        if epoch in checkpoint_epochs:
+            save_path = "vit_with_aux_heads.pth"
+            torch.save(model.state_dict(), save_path)
+            artifact = wandb.Artifact(f"vit_with_aux_heads_{epoch}", type="model")
+            artifact.add_file(save_path)
+            wandb.log_artifact(artifact)
+            os.remove(save_path)
+            
 
     wandb.finish()
 

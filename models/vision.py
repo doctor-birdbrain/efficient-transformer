@@ -5,6 +5,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Example of the path string
+def load_from_wandb(model_name, wandb_string, num_classes, aux_layers=[3,6,9]):
+    artifact = wandb.use_artifact(wandb_string, type="model")
+    artifact_dir = artifact.download()
+    state_dict = torch.load(f"{artifact_dir}/vit_with_auxheads.pth")
+
+    model = VitWithAuxHeads(model_name, num_classes, aux_layers, pretrained=False)
+    model.load_state_dict(state_dict)
+    return model
 
 class ViTWithAuxHeads(nn.Module):
     def __init__(
