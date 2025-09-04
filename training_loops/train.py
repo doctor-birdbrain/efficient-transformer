@@ -38,7 +38,7 @@ def train_loop_v0(
         },
     )
 
-    for epoch in range(start=1, stop=num_epochs, step=1):
+    for epoch in range(1, num_epochs+1, 1):
         train_loss, train_metrics = model.train_one_epoch(
             train_loader, optimizer, aux_weight, device
         )
