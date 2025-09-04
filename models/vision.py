@@ -116,7 +116,7 @@ class ViTWithAuxHeads(nn.Module):
 
             x = block(x)
 
-            if i in exit_layers:
+            if i in self.aux_layers:
                 # It seems we need to do this because it's the only
                 # available representation at intermediate depths
                 cls_rep = x[:, 0]  # the quirky CLS token
