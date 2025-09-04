@@ -167,7 +167,7 @@ class ViTWithAuxHeads(nn.Module):
                 total_loss += loss.item()
 
                 for head_name, logits in logits_dict.items():
-                    acc = accuracy(logits, labels)
+                    acc = self.accuracy(logits, labels)
                     total_metrics[head_name].append(acc)
 
         avg_loss = total_loss / batch_count
