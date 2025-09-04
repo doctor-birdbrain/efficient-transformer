@@ -196,19 +196,28 @@ class ViTWithAuxHeads(nn.Module):
         """
         self.eval()
         correct, total = 0, 0
+        total_loss = 0.0
+        batch_count = 0
 
         # track stats per exit
         exit_correct, exit_total = {}, {}
 
         with torch.no_grad():
             for batch in dataloader:
+                batch_count += 1
                 images, labels = batch['image'].to(device), batch['label'].to(device)
 
-                # Predict with early exit
+                # To calculate the validation loss
+                logits_dict = self.forward_with_aux(images)
+                loss = self.compute_loss(
+                    logits_dict, labels, aux_weight=aux_weight
+                )
+                total_loss += loss.item()
+
+                # To get the accuracy per exit: predict with early exit
                 preds, exit_at, _ = self.predict_with_early_exit(
                     images, threshold=threshold
                 )
-
                 total += targets.size(0)
                 correct += (preds == targets).sum().item()
 
@@ -225,6 +234,7 @@ class ViTWithAuxHeads(nn.Module):
         per_exit_acc = {
             ex: exit_correct[ex] / exit_total[ex] for ex in exit_total
         }
+        val_loss = total_loss / batch_count
 
         print(f"[Validation] Overall Acc: {overall_acc:.4f}")
         for ex, acc in per_exit_acc.items():
@@ -242,13 +252,14 @@ class ViTWithAuxHeads(nn.Module):
 
             wandb.log(log_dict)
 
-        return overall_acc, per_exit_acc
+        return overall_acc, per_exit_acc, val_loss
 
     def train_one_epoch(
         self,
         train_dataloader,
         optimizer,
         aux_weight,
+        confidence_threshold,
         device="cuda",
     ):
         self.train()

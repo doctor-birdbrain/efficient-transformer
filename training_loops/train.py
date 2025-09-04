@@ -13,6 +13,7 @@ def train_loop_v0(
     val_loader,
     num_epochs=10,
     aux_weight=0.5,
+    confidence_threshold=0.9,
     checkpoint_epochs=[],
     project_name="vit-tiny-early-exit",
     device="cuda",
@@ -42,11 +43,18 @@ def train_loop_v0(
             train_loader, optimizer, aux_weight, device
         )
 
-        val_loss, val_metrics = model.evaluate(val_loader, aux_weight, device)
+        overall_acc, val_metrics, val_loss = model.evaluate_early_exit(
+            val_loader,
+            aux_weight,
+            threhsold=confidence_threshold,
+            epoch=epoch,
+            device=device
+        )
 
         # Log to console
         print(f"\nEpoch {epoch}")
         print(f"Train loss: {train_loss:.4f} | Val loss: {val_loss:.4f}")
+        print(f"Overall acc: {overall_acc:4f")
         for head in train_metrics:
             print(
                 f"\t{head}: train={train_metrics[head]:.3f}, val={val_metrics[head]:.3f}"
