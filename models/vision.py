@@ -268,4 +268,4 @@ class ViTWithAuxHeads(nn.Module):
 
         avg_loss = total_loss / batch_count
         avg_metrics = {k: sum(v) / len(v) for k, v in total_metrics.items()}
-        return avg_losses, avg_metrics
+        return avg_loss, avg_metrics
