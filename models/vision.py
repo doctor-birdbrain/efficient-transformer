@@ -188,7 +188,7 @@ class ViTWithAuxHeads(nn.Module):
         val_dataloader,
         threshold=0.9,
         device="cuda",
-        log_to_wandb=False,
+        log_to_wandb=True,
         epoch=None,
     ):
         """
