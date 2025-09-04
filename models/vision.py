@@ -82,7 +82,7 @@ class ViTWithAuxHeads(nn.Module):
         return loss
 
     @torch.no_grad()
-    def predict_with_early_exit(x, threshold=0.9, exit_logging=True):
+    def predict_with_early_exit(self, x, threshold=0.9, exit_logging=True):
         """
         Takes a timm ViT model and runs inference with early exits.
 
@@ -217,9 +217,6 @@ class ViTWithAuxHeads(nn.Module):
                 total_loss += loss.item()
 
                 # To get the accuracy per exit: predict with early exit
-                print(images)
-                print(type(images))
-                import pdb; pdb.set_trace()
                 preds, exit_at, _ = self.predict_with_early_exit(
                     x=images, threshold=threshold, exit_logging=True
                 )
