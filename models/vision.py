@@ -218,7 +218,7 @@ class ViTWithAuxHeads(nn.Module):
 
                 # To get the accuracy per exit: predict with early exit
                 preds, exit_at, _ = self.predict_with_early_exit(
-                    images, threshold=threshold
+                    x=images, threshold=threshold, exit_logging=True
                 )
                 total += targets.size(0)
                 correct += (preds == targets).sum().item()
