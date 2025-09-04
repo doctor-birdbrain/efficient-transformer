@@ -186,6 +186,7 @@ class ViTWithAuxHeads(nn.Module):
     def evaluate_early_exit(
         self,
         val_dataloader,
+        aux_weight,
         threshold=0.9,
         device="cuda",
         log_to_wandb=True,

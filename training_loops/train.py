@@ -45,7 +45,7 @@ def train_loop_v0(
 
         overall_acc, val_metrics, val_loss = model.evaluate_early_exit(
             val_loader,
-            aux_weight,
+            aux_weight=aux_weight,
             threshold=confidence_threshold,
             epoch=epoch,
             device=device
