@@ -4,6 +4,7 @@ import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 
 # Example of the path string
 def load_from_wandb(model_name, wandb_string, num_classes, aux_layers=[3,6,9]):
@@ -188,9 +189,9 @@ class ViTWithAuxHeads(nn.Module):
         val_dataloader,
         aux_weight,
         threshold=0.9,
-        device="cuda",
         log_to_wandb=True,
         epoch=None,
+        device="cuda",
     ):
         """
         Evaluation assuming the model can do early exits at eval time.
@@ -248,8 +249,6 @@ class ViTWithAuxHeads(nn.Module):
             }
             log_dict["val/overall_acc"] = overall_acc
             log_dict["epoch"] = epoch
-
-            import wandb
 
             wandb.log(log_dict)
 
