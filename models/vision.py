@@ -217,6 +217,9 @@ class ViTWithAuxHeads(nn.Module):
                 total_loss += loss.item()
 
                 # To get the accuracy per exit: predict with early exit
+                print(images)
+                print(type(images))
+                import pdb; pdb.set_trace()
                 preds, exit_at, _ = self.predict_with_early_exit(
                     x=images, threshold=threshold, exit_logging=True
                 )
