@@ -220,15 +220,15 @@ class ViTWithAuxHeads(nn.Module):
                 preds, exit_at, _ = self.predict_with_early_exit(
                     x=images, threshold=threshold, exit_logging=True
                 )
-                total += targets.size(0)
-                correct += (preds == targets).sum().item()
+                total += labels.size(0)
+                correct += (preds == labels).sum().item()
 
                 # per-exit stats
                 for i, ex in enumerate(exit_at):
                     exit_total[ex] = exit_total.get(ex, 0) + 1
                     exit_correct[ex] = (
                         exit_correct.get(ex, 0)
-                        + (preds[i] == targets[i]).item()
+                        + (preds[i] == labels[i]).item()
                     )
 
         # aggregate results
