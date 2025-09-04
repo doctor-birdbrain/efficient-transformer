@@ -204,7 +204,7 @@ class ViTWithAuxHeads(nn.Module):
         exit_correct, exit_total = {}, {}
 
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in val_dataloader:
                 batch_count += 1
                 images, labels = batch['image'].to(device), batch['label'].to(device)
 
