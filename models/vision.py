@@ -1,20 +1,27 @@
 import collections
 
+from fvcore.nn import FlopCountAnalysis
 import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
+
 # Example of the path string
-def load_from_wandb(model_name, wandb_string, num_classes, aux_layers=[3,6,9]):
+def load_from_wandb(
+    model_name, wandb_string, num_classes, aux_layers=[3, 6, 9]
+):
     artifact = wandb.use_artifact(wandb_string, type="model")
     artifact_dir = artifact.download()
     state_dict = torch.load(f"{artifact_dir}/vit_with_auxheads.pth")
 
-    model = VitWithAuxHeads(model_name, num_classes, aux_layers, pretrained=False)
+    model = VitWithAuxHeads(
+        model_name, num_classes, aux_layers, pretrained=False
+    )
     model.load_state_dict(state_dict)
     return model
+
 
 class ViTWithAuxHeads(nn.Module):
     def __init__(
@@ -35,6 +42,47 @@ class ViTWithAuxHeads(nn.Module):
                 nn.Dropout(self.vit.head_drop.p),
                 nn.Linear(self.embed_dim, num_classes),
             )
+
+        # -- Next, we pre-compute how many flops for each block and heads.
+        # We will use this at eval time to compute the cost of inference
+        self.block_flops = {}
+        self.head_flops = {}
+
+        # We need to find the sequence length of this model
+        # It will be num_patches + cls_token
+        # 1. Number of patches the model creates
+        num_patches = self.vit.patch_embed.num_patches
+        # 2. Add 1 if model uses a class token
+        seq_len = num_patches + (
+            1
+            if hasattr(self.vit, "cls_token")
+            and self.vit.cls_token is not None
+            else 0
+        )
+
+        for i, block in enumerate(self.vit.blocks, start=1):
+            fa = FlopCountAnalysis(
+                block, torch.randn(1, seq_len, self.vit.embed_dim)
+            )
+            self.block_flops[i] = fa.total()
+
+        for layer in self.aux_layers:
+            # The heads don't need seq_len, because the head
+            # only takes the CLS token as input.
+            # The flops from this head
+            fa = FlopCountAnalysis(
+                self.aux_heads[str(layer)],
+                torch.randn(1, base_model.embed_dim),
+            )
+            # The flops from layers leading up to this head
+            block_flops = sum(
+                [self.block_flops[i] for i in range(1, layer + 1)]
+            )
+            self.head_flops[str(layer)] = fa.total() + block_flops
+
+        # And now the final head
+        fa = FlopCountAnalysis(block, torch.randn(1, base_model.embed_dim))
+        self.head_flops["final"] = fa.total()
 
     def forward_with_aux(self, x):
         """
@@ -90,7 +138,6 @@ class ViTWithAuxHeads(nn.Module):
         specifically the "forward_features" function.
         https://github.com/huggingface/pytorch-image-models/blob/954613a470652e4a113ff45b62dbd15c4e229218/timm/models/vision_transformer.py#L934C9-L934C25
         """
-
         # Outputs to fill (maintain original batch order)
         preds = torch.empty(x.shape[0], dtype=torch.long, device=x.device)
         confs = torch.empty(x.shape[0], dtype=x.dtype, device=x.device)
@@ -168,7 +215,9 @@ class ViTWithAuxHeads(nn.Module):
         with torch.no_grad():
             for batch in val_dataloader:
                 batch_count += 1
-                images, labels = batch['image'].to(device), batch['label'].to(device)
+                images, labels = batch["image"].to(device), batch["label"].to(
+                    device
+                )
 
                 logits_dict = self.forward_with_aux(images)
                 loss = self.compute_loss(
@@ -207,7 +256,9 @@ class ViTWithAuxHeads(nn.Module):
         with torch.no_grad():
             for batch in val_dataloader:
                 batch_count += 1
-                images, labels = batch['image'].to(device), batch['label'].to(device)
+                images, labels = batch["image"].to(device), batch["label"].to(
+                    device
+                )
 
                 # To calculate the validation loss
                 logits_dict = self.forward_with_aux(images)
@@ -268,7 +319,9 @@ class ViTWithAuxHeads(nn.Module):
 
         batch_count = 0
         for batch in train_dataloader:
-            images, labels = batch['image'].to(device), batch['label'].to(device)
+            images, labels = batch["image"].to(device), batch["label"].to(
+                device
+            )
             logits_dict = self.forward_with_aux(images)
             loss = self.compute_loss(
                 logits_dict, labels, aux_weight=aux_weight
