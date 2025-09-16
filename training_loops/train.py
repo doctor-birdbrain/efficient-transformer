@@ -17,7 +17,6 @@ def train_loop_v0(
     checkpoint_epochs=[],
     project_name="vit-tiny-early-exit",
     device="cuda",
-    
 ):
     # This is a decent idea if we are finetuning the entire transformer:
     lr = 1e-4
@@ -38,21 +37,26 @@ def train_loop_v0(
         },
     )
 
-    for epoch in range(1, num_epochs+1, 1):
+    for epoch in range(1, num_epochs + 1, 1):
         train_loss, train_metrics = model.train_one_epoch(
             train_loader, optimizer, aux_weight, device
         )
 
-        overall_acc, val_metrics, val_loss = model.evaluate_early_exit(
-            val_loader,
-            aux_weight=aux_weight,
-            threshold=confidence_threshold,
-            epoch=epoch,
-            device=device
+        overall_acc, val_metrics, val_loss, flop_count = (
+            model.evaluate_early_exit(
+                val_loader,
+                aux_weight=aux_weight,
+                threshold=confidence_threshold,
+                epoch=epoch,
+                log_to_wandb=False,  # because this function logs
+                device=device,
+            )
         )
 
         # Log to console
+        print("=*=" * 25)
         print(f"\nEpoch {epoch}")
+        print(f"Eval flops: {flop_count}")
         print(f"Train loss: {train_loss:.4f} | Val loss: {val_loss:.4f}")
         print(f"Overall acc: {overall_acc:4f}")
         for head in train_metrics:
@@ -63,6 +67,7 @@ def train_loop_v0(
         log_dict = {
             "train/loss": train_loss,
             "val/loss": val_loss,
+            "val/flops": flop_count,
         }
         for head, acc in train_metrics.items():
             log_dict[f"train/{head}_acc"] = acc
@@ -74,11 +79,12 @@ def train_loop_v0(
         if epoch in checkpoint_epochs:
             save_path = "vit_with_aux_heads.pth"
             torch.save(model.state_dict(), save_path)
-            artifact = wandb.Artifact(f"vit_with_aux_heads_{epoch}", type="model")
+            artifact = wandb.Artifact(
+                f"vit_with_aux_heads_{epoch}", type="model"
+            )
             artifact.add_file(save_path)
             wandb.log_artifact(artifact)
             os.remove(save_path)
-            
 
     wandb.finish()
 

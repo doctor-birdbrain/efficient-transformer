@@ -250,6 +250,8 @@ class ViTWithAuxHeads(nn.Module):
         total_loss = 0.0
         batch_count = 0
 
+        flop_count = 0
+
         # track stats per exit
         exit_correct, exit_total = {}, {}
 
@@ -281,6 +283,7 @@ class ViTWithAuxHeads(nn.Module):
                         exit_correct.get(ex, 0)
                         + (preds[i] == labels[i]).item()
                     )
+                    flop_count += self.head_flops[ex]
 
         # aggregate results
         overall_acc = correct / total
@@ -289,6 +292,7 @@ class ViTWithAuxHeads(nn.Module):
         }
         val_loss = total_loss / batch_count
 
+        print(f"[Validation] FLOPs: {flop_count}")
         print(f"[Validation] Overall Acc: {overall_acc:.4f}")
         for ex, acc in per_exit_acc.items():
             print(f"  Exit {ex}: {acc:.4f} (n={exit_total[ex]})")
@@ -299,11 +303,12 @@ class ViTWithAuxHeads(nn.Module):
                 f"val/exit_{ex}_acc": acc for ex, acc in per_exit_acc.items()
             }
             log_dict["val/overall_acc"] = overall_acc
+            log_dict["val/flops"] = flop_count
             log_dict["epoch"] = epoch
 
             wandb.log(log_dict)
 
-        return overall_acc, per_exit_acc, val_loss
+        return overall_acc, per_exit_acc, val_loss, flop_count
 
     def train_one_epoch(
         self,
