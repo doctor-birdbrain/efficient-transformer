@@ -72,7 +72,7 @@ class ViTWithAuxHeads(nn.Module):
             # The flops from this head
             fa = FlopCountAnalysis(
                 self.aux_heads[str(layer)],
-                torch.randn(1, base_model.embed_dim),
+                torch.randn(1, self.vit.embed_dim),
             )
             # The flops from layers leading up to this head
             block_flops = sum(
