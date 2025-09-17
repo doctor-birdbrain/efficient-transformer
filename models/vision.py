@@ -81,7 +81,7 @@ class ViTWithAuxHeads(nn.Module):
             self.head_flops[str(layer)] = fa.total() + block_flops
 
         # And now the final head
-        fa = FlopCountAnalysis(block, torch.randn(1, base_model.embed_dim))
+        fa = FlopCountAnalysis(block, torch.randn(1, self.vit.embed_dim))
         self.head_flops["final"] = fa.total()
 
     def forward_with_aux(self, x):
