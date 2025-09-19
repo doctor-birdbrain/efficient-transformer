@@ -65,7 +65,7 @@ class ViTWithAuxHeads(nn.Module):
                 block, torch.randn(1, seq_len, self.vit.embed_dim)
             )
             self.block_flops[i] = fa.total()
-        
+
         for layer in self.aux_layers:
             # The heads don't need seq_len, because the head
             # only takes the CLS token as input.
@@ -81,8 +81,12 @@ class ViTWithAuxHeads(nn.Module):
             self.head_flops[str(layer)] = fa.total() + block_flops
 
         # And now the final head
-        fa = FlopCountAnalysis(self.vit.head, torch.randn(1, self.vit.embed_dim))
-        self.head_flops["final"] = fa.total() + sum([self.block_flops[i] for i in self.block_flops])
+        fa = FlopCountAnalysis(
+            self.vit.head, torch.randn(1, self.vit.embed_dim)
+        )
+        self.head_flops["final"] = fa.total() + sum(
+            [self.block_flops[i] for i in self.block_flops]
+        )
 
     def forward_with_aux(self, x):
         """
@@ -287,6 +291,7 @@ class ViTWithAuxHeads(nn.Module):
 
         # aggregate results
         overall_acc = correct / total
+        per_exit_acc = {ex: np.nan for ex in self.aux_layers}
         per_exit_acc = {
             ex: exit_correct[ex] / exit_total[ex] for ex in exit_total
         }
