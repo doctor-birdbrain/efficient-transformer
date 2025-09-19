@@ -1,6 +1,7 @@
 import collections
 
 from fvcore.nn import FlopCountAnalysis
+import numpy as np
 import timm
 import torch
 import torch.nn as nn
