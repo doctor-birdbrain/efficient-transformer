@@ -292,9 +292,9 @@ class ViTWithAuxHeads(nn.Module):
 
         # aggregate results
         overall_acc = correct / total
-        per_exit_acc = {ex: np.nan for ex in self.aux_layers}
+        per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
         per_exit_acc = {
-            ex: exit_correct[ex] / exit_total[ex] for ex in exit_total
+            str(ex): exit_correct[ex] / exit_total[ex] for ex in exit_total
         }
         val_loss = total_loss / batch_count
 
