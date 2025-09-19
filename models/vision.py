@@ -296,6 +296,9 @@ class ViTWithAuxHeads(nn.Module):
         for ex in exit_total:
             per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
         val_loss = total_loss / batch_count
+        import pdb
+
+        pdb.set_trace()
 
         print(f"[Validation] FLOPs: {flop_count}")
         print(f"[Validation] Overall Acc: {overall_acc:.4f}")
