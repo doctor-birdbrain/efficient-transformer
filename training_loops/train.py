@@ -59,9 +59,7 @@ def train_loop_v0(
         print(f"Eval flops: {flop_count}")
         print(f"Train loss: {train_loss:.4f} | Val loss: {val_loss:.4f}")
         print(f"Overall acc: {overall_acc:4f}")
-        import pdb
 
-        pdb.set_trace()
         for head in train_metrics:
             print(
                 f"\t{head}: train={train_metrics[head]:.3f}, val={val_metrics[head]:.3f}"
