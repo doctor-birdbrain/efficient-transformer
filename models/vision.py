@@ -263,10 +263,10 @@ class ViTWithAuxHeads(nn.Module):
         # even if no example exited there.
         per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
         per_exit_acc["final"] = np.nan
-        exit_total = {str(ex): np.nan for ex in self.aux_layers}
-        exit_total["final"] = np.nan
-        exit_correct = {str(ex): np.nan for ex in self.aux_layers}
-        exit_correct["final"] = np.nan
+        exit_total = {str(ex): 0 for ex in self.aux_layers}
+        exit_total["final"] = 0
+        exit_correct = {str(ex): 0 for ex in self.aux_layers}
+        exit_correct["final"] = 0
 
         with torch.no_grad():
             for batch in val_dataloader:
@@ -301,7 +301,10 @@ class ViTWithAuxHeads(nn.Module):
         # aggregate results
         overall_acc = correct / total
         for ex in exit_total:
-            per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
+            try:
+                per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
+            except ZeroDivisionError:
+                per_exit_acc[str(ex)] = np.nan
         val_loss = total_loss / batch_count
 
         print(f"[Validation] FLOPs: {flop_count}")
