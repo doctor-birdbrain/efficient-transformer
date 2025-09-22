@@ -259,6 +259,14 @@ class ViTWithAuxHeads(nn.Module):
 
         # track stats per exit
         exit_correct, exit_total = {}, {}
+        # We need to initialize the dicts so that they have a value
+        # even if no example exited there.
+        per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
+        per_exit_acc["final"] = np.nan
+        exit_total = {str(ex): np.nan for ex in self.aux_layers}
+        exit_total["final"] = np.nan
+        exit_correct = {str(ex): np.nan for ex in self.aux_layers}
+        exit_correct["final"] = np.nan
 
         with torch.no_grad():
             for batch in val_dataloader:
@@ -291,14 +299,6 @@ class ViTWithAuxHeads(nn.Module):
                     flop_count += self.head_flops[ex]
 
         # aggregate results
-        # We need to initialize the dicts so that they have a value
-        # even if no example exited there.
-        per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
-        per_exit_acc["final"] = np.nan
-        exit_total = {str(ex): np.nan for ex in self.aux_layers}
-        exit_total["final"] = np.nan
-        exit_correct = {str(ex): np.nan for ex in self.aux_layers}
-        exit_correct["final"] = np.nan
         overall_acc = correct / total
         for ex in exit_total:
             per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
