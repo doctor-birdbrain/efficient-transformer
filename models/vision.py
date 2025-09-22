@@ -332,8 +332,8 @@ class ViTWithAuxHeads(nn.Module):
     ):
         self.train()
         total_loss = 0.0
-        total_metrics = {str(k): np.nan for k in self.aux_layers}
-        total_metrics["final"] = np.nan
+        total_metrics = {str(k): [] for k in self.aux_layers}
+        total_metrics["final"] = []
 
         batch_count = 0
         for batch in train_dataloader:
