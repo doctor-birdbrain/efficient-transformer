@@ -291,10 +291,15 @@ class ViTWithAuxHeads(nn.Module):
                     flop_count += self.head_flops[ex]
 
         # aggregate results
-        overall_acc = correct / total
+        # We need to initialize the dicts so that they have a value
+        # even if no example exited there.
         per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
+        per_exit_acc["final"] = np.nan
         exit_total = {str(ex): np.nan for ex in self.aux_layers}
+        exit_total["final"] = np.nan
         exit_correct = {str(ex): np.nan for ex in self.aux_layers}
+        exit_correct["final"] = np.nan
+        overall_acc = correct / total
         for ex in exit_total:
             per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
         val_loss = total_loss / batch_count
@@ -327,7 +332,8 @@ class ViTWithAuxHeads(nn.Module):
     ):
         self.train()
         total_loss = 0.0
-        total_metrics = collections.defaultdict(list)
+        total_metrics = {str(k): np.nan for k in self.aux_layers}
+        total_metrics["final"] = np.nan
 
         batch_count = 0
         for batch in train_dataloader:
