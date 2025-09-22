@@ -293,12 +293,10 @@ class ViTWithAuxHeads(nn.Module):
         # aggregate results
         overall_acc = correct / total
         per_exit_acc = {str(ex): np.nan for ex in self.aux_layers}
+        exit_total = {str(ex): np.nan for ex in self.aux_layers}
         for ex in exit_total:
             per_exit_acc[str(ex)] = exit_correct[ex] / exit_total[ex]
         val_loss = total_loss / batch_count
-        import pdb
-
-        pdb.set_trace()
 
         print(f"[Validation] FLOPs: {flop_count}")
         print(f"[Validation] Overall Acc: {overall_acc:.4f}")
