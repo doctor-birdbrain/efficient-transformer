@@ -184,7 +184,7 @@ class ViTWithAuxHeads(nn.Module):
                     confs[exited_orig_idx] = conf[exit_mask]
                     if exit_logging:
                         for j in exited_orig_idx.tolist():
-                            exit_at[j] = i
+                            exit_at[j] = str(i)
 
                     # Keep only the not-exited samples for deeper blocks
                     keep_mask = ~exit_mask
@@ -296,7 +296,7 @@ class ViTWithAuxHeads(nn.Module):
                         exit_correct.get(ex, 0)
                         + (preds[i] == labels[i]).item()
                     )
-                    flop_count += self.head_flops[ex]
+                    flop_count += self.head_flops[str(ex)]
 
         # aggregate results
         overall_acc = correct / total
